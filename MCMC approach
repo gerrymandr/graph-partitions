@@ -1,0 +1,128 @@
+# -*- coding: utf-8 -*-
+"""
+Created on Mon Jun 11 10:37:28 2018
+
+@author: MGGG
+"""
+
+import networkx as nx
+import numpy as np
+import random
+
+def removal_remains_connected(H, v):
+    W = H.copy()
+    W.remove_node(v)
+    return nx.is_connected(W)
+
+#def removal_remains_connected(H, v):
+#    e = str(H.edges(v))
+#    H.remove_node(v)
+#    if nx.is_connected(H):
+#        H.add_node(v)
+#        H.add_edges_from(eval(e))
+#        return True
+#    else:
+#        H.add_node(v)
+#        H.add_edges_from(eval(e))
+#        return False
+    
+class maps:
+    def __init__(self, K, n_districts):
+        self.G = K
+        self.district_list = []
+        self.number_districts = n_districts
+        self.partitions = []
+        self.boundary_edges = set([])
+        self.districts = {}
+        
+    def components_connected(self):
+        for g in self.district_list:
+            if not nx.is_connected(g):
+                return False
+        return True
+    
+    def deg(self):
+        #Computes the number of neighbors of the current partition
+        count = 0
+        for v in self.G.nodes():
+            if self.check_proposal(v) == True:
+                count += 1
+        return count
+    
+#    def deg_from_boundary(self):
+#        #Smarter way to compute them - should equal deg... debug!
+#        count = 0
+#        for e in self.boundary_edges:
+#            for v in e:
+#                if self.check_proposal( v) == True:
+#                    count += 1
+#        return count
+
+    def check_proposal(self, v):
+        k = self.G.node[v]['district']
+        H = self.districts[k]
+        return removal_remains_connected(H,v)
+    
+    def make_district_list(self):
+        for k in range(self.number_districts):
+            nbunch = [i for i in self.G.nodes() if self.G.node[i]['district'] == k]
+            H = self.G.subgraph(nbunch)
+            self.district_list.append(H)
+            self.districts[k] = H
+            
+    def initialize_boundary(self):
+        for i in range(self.number_districts):
+            X = set(nx.edge_boundary(self.G,self.district_list[i].nodes()))
+            self.boundary_edges = self.boundary_edges.union(X)
+    
+    def propose_step(self):
+        while True:
+            e = random.sample(self.boundary_edges,1)[0]
+            #Because Nx stores the edge in both directions, we don't need to randomly shuffle
+            if self.check_proposal(e[0]) == True:
+                return e
+            #Returns the nodes of the edges, we know that changing the node of the first 
+            #Maybe need to debug here!
+            
+    def MH_step(self):
+        e = self.propose_step()
+        v = e[0]
+        old_deg = self.deg_from_boundary()
+        old_district = self.G.node[v[0]]["district"]
+        new_district = self.G.node[v[1]]["district"]
+        self.update_boundary_and_districts(e, v, old_district, new_district)
+        new_deg = self.deg_from_boundary()
+        A = np.min(1,old_deg/new_deg) ##Check the order of the ratio!
+        coin = np.random.rand(1)
+        if coin > A:
+            self.update_boundary_and_districts(e, v, new_district, old_district)
+        #Check the orders!!! > or <??
+		
+    def update_boundary_and_districts(self, edge, node, old_district, new_district):
+        #Update boundary and districts
+        K = nx.edge_boundary(self.district_list[old_district], [node])
+        for x in K:
+            self.boundary_edges = self.boundary_edges.union(set([x]))
+            self.boundary_edges = self.boundary_edges.union(set([(x[1],x[0])]))    
+        new_oldnodes = set(self.district_list[old_district].nodes())
+        new_oldnodes.remove(node)
+        new_newnodes = set(self.district_list[new_district].nodes())
+        new_newnodes.add(node)
+        self.G.node[node]["district"] = new_district
+        self.district_list[old_district] = self.G.subgraph(new_oldnodes)
+        self.district_list[new_district] = self.G.subgraph(new_newnodes)
+        K= nx.edge_boundary(self.district_list[new_district],[node])
+        for x in K: 
+            self.boundary_edges.discard(x)
+            self.boundary_edges.discard((x[1],x[0]))
+		#Need to be careful that undirectd edges are stored as (a,b),...,(b,a) in the edge list
+
+m = 3
+K = nx.grid_2d_graph(m,m)
+for i in K.nodes():
+    K.node[i]['district'] = i[0]
+M = maps(K, m)
+M.make_district_list()
+M.initialize_boundary()
+M.deg()
+#M.deg_from_boundary()
