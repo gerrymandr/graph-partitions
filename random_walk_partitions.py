@@ -19,46 +19,70 @@ import networkx as nx #for graph datatypes and such
 import geopandas as gpd #for shapfile reading
 import matplotlib.pyplot as plt #general visualizations
 import random
-
-###Augment Shapefile Code
-
-
-
-###Create Adjacency Matrix
+import queue as q
 
 #Temporary graph for testing
 G = nx.grid_graph(dim = [10,10])
 G.add_node("boundary")
-for i in [0:9]:
-    for j in [0:9]:
+for i in range(0,9):
+    for j in range(0,9):
         if i == 0 or j == 0:
             G.add_edge('boundary', (i,j))
         if i == 9 or j == 9:
             G.add_edge('boundary', (i,j))
 
-#Preset all districts to one color
-for n in G.nodes:
-    G.nodes[n]['color'] = 'red'
-            
-
-
-###Perform Random Walk
-
 visited = []
 current = 'boundary'
+color_map = []
+last = None
 while current not in visited:
+    plt.close
     visited.append(current)
-    G.nodes[current]['color'] = 'blue'
     neighbors = list(G.neighbors(current))
-    index = np.random.randrange(0,len(neighbors))
-    current = neighbors[index]
-    nx.draw(G)
-    
-    
+    newnode = last
+    while newnode == last:
+        index = random.randrange(0,len(neighbors))
+        newnode = neighbors[index]
+    last = current
+    current = newnode 
+    if current == 'boundary':
+        break
+for node in G:
+    if node in visited:
+        color_map.append('purple')
+    else:
+        color_map.append('green')
 
+start = 'boundary'
+while start in visited:
+   start = random.choice(list(G.nodes))
+partition_1 = []
+bfs_queue = q.Queue()
+bfs_queue.put(start)
+bfs_color = []
 
-###Create Partition 1
-
-
+#Populate the first partition using a BFS model
+while not bfs_queue.empty():
+   node = bfs_queue.get()
+   partition_1.append(node)
+   for nbr in list(G.neighbors(node)):
+       if nbr not in partition_1 and nbr not in visited and nbr not in list(bfs_queue.queue):
+           bfs_queue.put(nbr)
 
 ###Allocate Partition 2 and output LoL for partitioning.
+partition_2 = []
+for other in list(G.nodes):
+   if other not in partition_1 and other != 'boundary':
+       partition_2.append(other)
+print('[DISTRICT 1:', partition_1, '\n', 'DISTRICT 2',partition_2)
+
+G.remove_node('boundary')
+
+for node in G:
+    if node in partition_1:
+        bfs_color.append('orange')
+    else:
+        bfs_color.append('red')
+        
+pos = dict([(n,n) for n in G.nodes])
+nx.draw(G, node_color = bfs_color,with_labels = True,pos=pos)

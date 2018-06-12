@@ -10,6 +10,9 @@ import numpy as np
 import random
 
 def removal_remains_connected(H, v):
+    if len(H.nodes()) == 1:
+            return True
+    #Because nx has connectivity is undefined for the empty graph...
     W = H.copy()
     W.remove_node(v)
     return nx.is_connected(W)
@@ -64,6 +67,7 @@ class maps:
         return removal_remains_connected(H,v)
     
     def make_district_list(self):
+        self.district_list = []
         for k in range(self.number_districts):
             nbunch = [i for i in self.G.nodes() if self.G.node[i]['district'] == k]
             H = self.G.subgraph(nbunch)
@@ -76,6 +80,7 @@ class maps:
             self.boundary_edges = self.boundary_edges.union(X)
     
     def propose_step(self):
+        #This works when the boundary is non-empty
         while True:
             e = random.sample(self.boundary_edges,1)[0]
             #Because Nx stores the edge in both directions, we don't need to randomly shuffle
@@ -85,39 +90,51 @@ class maps:
             #Maybe need to debug here!
             
     def MH_step(self):
+        if 0 in [len(g.nodes()) for g in self.district_list]:
+            #This needs to be a seperate case
+            M.MH_empty_district_case()
+            return
         e = self.propose_step()
         v = e[0]
-        old_deg = self.deg_from_boundary()
-        old_district = self.G.node[v[0]]["district"]
-        new_district = self.G.node[v[1]]["district"]
+        old_deg = self.deg()
+        old_district = self.G.node[e[0]]["district"]
+        new_district = self.G.node[e[1]]["district"]
         self.update_boundary_and_districts(e, v, old_district, new_district)
-        new_deg = self.deg_from_boundary()
-        A = np.min(1,old_deg/new_deg) ##Check the order of the ratio!
+        self.make_district_list()
+        new_deg = self.deg()
+        A = np.min([1,old_deg/new_deg]) ##Check the order of the ratio!
         coin = np.random.rand(1)
         if coin > A:
             self.update_boundary_and_districts(e, v, new_district, old_district)
         #Check the orders!!! > or <??
-		
+    def MH_empty_district_case():
+        #The case to deal with when a district is empty
+        return True
     def update_boundary_and_districts(self, edge, node, old_district, new_district):
         #Update boundary and districts
         K = nx.edge_boundary(self.district_list[old_district], [node])
         for x in K:
             self.boundary_edges = self.boundary_edges.union(set([x]))
             self.boundary_edges = self.boundary_edges.union(set([(x[1],x[0])]))    
-        new_oldnodes = set(self.district_list[old_district].nodes())
-        new_oldnodes.remove(node)
-        new_newnodes = set(self.district_list[new_district].nodes())
-        new_newnodes.add(node)
+        updated_old_district_nodes = set(self.district_list[old_district].nodes())
+        updated_old_district_nodes.remove(node)
+        updated_new_district_nodes = set(self.district_list[new_district].nodes())
+        updated_new_district_nodes.add(node)
         self.G.node[node]["district"] = new_district
-        self.district_list[old_district] = self.G.subgraph(new_oldnodes)
-        self.district_list[new_district] = self.G.subgraph(new_newnodes)
+        self.district_list[old_district] = self.G.subgraph(updated_old_district_nodes)
+        self.district_list[new_district] = self.G.subgraph(updated_new_district_nodes)
         K= nx.edge_boundary(self.district_list[new_district],[node])
         for x in K: 
             self.boundary_edges.discard(x)
             self.boundary_edges.discard((x[1],x[0]))
 		#Need to be careful that undirectd edges are stored as (a,b),...,(b,a) in the edge list
+        
+    def statistics(self):
+        sizes = [len(g.nodes()) for g in M.district_list]
+        print(sizes, len(self.boundary_edges))
+    
 
-m = 3
+m = 2
 K = nx.grid_2d_graph(m,m)
 for i in K.nodes():
     K.node[i]['district'] = i[0]
@@ -125,4 +142,12 @@ M = maps(K, m)
 M.make_district_list()
 M.initialize_boundary()
 M.deg()
+M.MH_step()
+M.statistics()
+#e = M.propose_step()
+#v = e[0]
+#old_deg = M.deg()
+#old_district = M.G.node[e[0]]["district"]
+#new_district = M.G.node[e[1]]["district"]
+#M.update_boundary_and_districts(e, v, old_district, new_district)
 #M.deg_from_boundary()
