@@ -52,7 +52,7 @@ def rand_walk_partition(G, step_count, fVisualize = False):
         rand_walk.append(current)
         neighbors = list(graph.neighbors(current))
     
-        #This section prevents doubling back in the random walk
+        #This section prevents doubling back in the random walk until a specified number of random steps have been taken.
         newnode = last
         while (newnode == last) or (newnode == 'boundary' and count < step_count): #The Boundary Bouncer
             index = random.randrange(0,len(neighbors))
@@ -61,13 +61,13 @@ def rand_walk_partition(G, step_count, fVisualize = False):
         last = current
         current = newnode
     
-        #We only end the walk if we reach boundary and have taken a certain number of steps
+        #We only end the walk if we reach boundary and have taken a certain number of steps.
         if current == 'boundary':
             break
             
         count+=1
 
-    #Choose a node we know not to be in our cut and initialize our queue with it
+    #Choose a random node we know not to be in our cut and initialize our queue with it
     start = 'boundary'
     while start in rand_walk:
        start = random.choice(list(graph.nodes))
@@ -86,7 +86,8 @@ def rand_walk_partition(G, step_count, fVisualize = False):
                bfs_queue.put(nbr)
 
     ###Allocate Partition 2 and output LoL for partitioning.
-
+    ## This algorithm is currently set up to partitition into 2 'districts'.  As of now its logic relies on "if not in 1, then in 2".
+    ## This logic should be updated going forward to enable more complicated partitioning.
     partition_2 = []
     for other in list(graph.nodes):
        if other not in partition_1 and other != 'boundary':
@@ -94,24 +95,30 @@ def rand_walk_partition(G, step_count, fVisualize = False):
     if fVisualize == False:
         return [partition_1,partition_2]
     
+    # in final district partition visualization, don't want boundary node. 
     graph.remove_node('boundary')
 
+    # color the 2 partitions 2 different colors.
     for node in graph:
         if node in partition_1:
             dist_color.append('orange')
         else:
             dist_color.append('red')
     
+    # remove edges between the partitions.
     for node in partition_2:
         for nbr in list(graph.neighbors(node)):
             if nbr in partition_1:
                 graph.remove_edge(node,nbr)
     
+    # draw the final districting scheme.
     pos = dict([(n,n) for n in graph.nodes])
     nx.draw(graph, node_color = dist_color,pos=pos)
 
 ''' Creates a histogram comparing the size of the partitions created by the rand walk
 '''
+    # run stats on algorithm output:  histogram based on area difference
+    # where area is defined as number of nodes in partition
 def equality_histogram(graph, step_count, num_runs):
     hist_list = []
     for i in range(num_runs):
@@ -130,5 +137,13 @@ def uniformity_histogram(graph, step_count, num_runs):
     return plt.hist(hist_list)
 
 '''
-Current State of Random Walk: We ran histograms on 10 by 10 grid graphs with different step counts. It appears that requiring a walk of length 45 or 50 in this case produced the most even results. We were not able to get a spike around equal partitioning while only requiring minimum walk length. The major issues for low walk counts in that they would return to the boundary too quickly and therefore there would be a very large partition 1 in most cases and small partition 2. Large values had the opposite problem in which the walk would create many small areas and the random sampling would often create very small partition 1s. Upon talking to Justin it appears like a good next step would be to look at making the random walk respond to some sort of global potential we update on every iteration. Lorenzo suggested using a Brownian Bridge model to implement this.
+Current State of Random Walk: We ran histograms on 10 by 10 grid graphs with different step counts. 
+It appears that requiring a walk of length 45 or 50 in this case produced the most even results. 
+We were not able to get a spike around equal partitioning while only requiring minimum walk length. 
+The major issues for low walk counts in that they would return to the boundary too quickly and therefore there 
+would be a very large partition 1 in most cases and small partition 2. 
+Large values had the opposite problem in which the walk would create many small areas and the random sampling 
+would often create very small partition 1s. Upon talking to Justin it appears like a good next step 
+would be to look at making the random walk respond to some sort of global potential we update on every iteration. 
+Lorenzo suggested using a Brownian Bridge model to implement this.
 '''
