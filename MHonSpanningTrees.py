@@ -19,7 +19,7 @@ def log_number_trees(G):
     m = nx.laplacian_matrix(G)[1:,1:]
     m = csc_matrix(m)
     splumatrix = scipy.sparse.linalg.splu(m)
-    diag_L = np.diag(R.L.A)
+    diag_L = np.diag(splumatrix.L.A)
     diag_U = np.diag(splumatrix.U.A)
     S_log_L = [np.log(s) for s in diag_L]
     #Seems like the upper diagonal of L is always 1.... so this may be unnecessary.
@@ -67,11 +67,15 @@ def random_spanning_tree(G):
 
 ##May be faster to do this all with matrices / F_2... since cycles are linearly depenent sets, etc
 
-def propose_step(G,T):
+def propose_step(G,T, cut_only = False):
     e = list(T.edges())[0]
-    while (e in list(T.edges())) or (tuple([e[1], e[0]]) in list(T.edges())):
-        e = random.choice(list(G.edges()))
-    #This is stupidly inefficient...
+    if cut_only == False:
+        while (e in list(T.edges())) or (tuple([e[1], e[0]]) in list(T.edges())):
+            e = random.choice(list(G.edges()))
+    if cut_only == True:
+        cuts = list(cut_edges(G,T, best_edge_for_equipartition(G,T)[0]))
+        while (e in list(T.edges())) or (tuple([e[1], e[0]]) in list(T.edges())):
+            e = random.choice(cuts)        
     T.add_edges_from([e])
     C = nx.find_cycle(T, orientation = 'ignore')
     w = random.choice(C)
@@ -79,9 +83,28 @@ def propose_step(G,T):
     U.add_edges_from(list(T.edges()))
     U.remove_edges_from([w])
     T.remove_edges_from([e])
-    #This is also stupidly inefficient, we only need to find a cycle, 
-    #but this relies on a random walk through the tree ...
     return U
+
+def cut_edges(G,T,e):
+    T.remove_edges_from([e])
+    components = list(nx.connected_components(T))
+    T.add_edges_from([e])
+    A = components[0]
+    B = components[1]
+    G_A = nx.induced_subgraph(G, A)
+    G_B = nx.induced_subgraph(G, B)
+    edges_of_G = list(G.edges())
+    for x in list(G_A.edges()):
+        if x in edges_of_G:
+            edges_of_G.remove(x)
+        if (x[1], x[0]) in edges_of_G:
+            edges_of_G.remove( (x[1], x[0]))
+    for x in list(G_B.edges()):
+        if x in edges_of_G:
+            edges_of_G.remove(x)
+        if (x[1], x[0]) in edges_of_G:
+            edges_of_G.remove( (x[1], x[0]) )
+    return edges_of_G
 
 def R(G,T,e):
     T.remove_edges_from([e])
@@ -163,24 +186,28 @@ def equi_score_tree_edge_pair(G,T,e):
     x =  np.min([A / (A + B), B / (A + B)])
     return x
 
-def MH_step(G, T,e, equi = False):
-        U = propose_step(G,T)
-        current_score = score_tree_edge_pair(G,T,e)
+def MH_step(G, T,e, equi = False, cut_edges = False, use_MH = True):
+        U = propose_step(G,T, cut_edges)
+        if use_MH == True:
+            current_score = score_tree_edge_pair(G,T,e)
         if equi == False:
             e2 = random.choice(list(U.edges()))
         if equi == True:
             e2 = best_edge_for_equipartition(G,U)[0]
-        new_score = score_tree_edge_pair(G, U, e2)
+        if use_MH == True:
+            new_score = score_tree_edge_pair(G, U, e2)
         #A = np.min(1, current_score - new_score)
-        if new_score > current_score:
+            if new_score > current_score:
+                return [U,e2]
+            else:
+               p = np.exp(new_score - current_score)
+               a = np.random.uniform(0,1)
+               if a < p:
+                   return [U,e2]
+               else:
+                   return [T,e]
+        if use_MH == False:
             return [U,e2]
-        else:
-           p = np.exp(new_score - current_score)
-           a = np.random.uniform(0,1)
-           if a < p:
-               return [U,e2]
-           else:
-               return [T,e]
     
 def print_summary_statistics(G,partitions):
     sizes = []
@@ -239,14 +266,14 @@ def make_histogram(A, sample):
     return dictionary
     
 rejections_list = []
-for m in range(3,6):
-    m = 10
+for m in range(3,4):
+    m = 3
     print("when m is", m)
     G = nx.grid_graph([m,m])
-    print(np.exp(log_number_trees(G)))
-    #A = k_connected_graph_partitions(G,2)
-    #list_of_partitions = list(A)
-    desired_samples = [10**k for k in range(5,6)]
+    print(log_number_trees(G))
+    A = k_connected_graph_partitions(G,2)
+    list_of_partitions = list(A)
+    desired_samples = [10**k for k in range(6,7)]
     for sample_size in desired_samples:
         samples = sample_size
         T = random_spanning_tree(G)
@@ -258,7 +285,7 @@ for m in range(3,6):
         for i in range(samples):
             previous_T = T
             previous_e = e
-            MH_returns = MH_step(G,T,e,True)
+            MH_returns = MH_step(G,T,e,False, True)
             if (T == MH_returns[0]) and (e == MH_returns[1]):
                 rejections += 1
             T = MH_returns[0]
@@ -266,7 +293,7 @@ for m in range(3,6):
             partitions.append(R(G,T,e))
             #trees.append(T)
             #scores.append(score_tree_edge_pair(G,T,e))        
-        print_summary_statistics(G,partitions)
+       # print_summary_statistics(G,partitions)
     #    print(rejections / samples , "at: ", m)
     #    rejections_list.append(rejections)
     #    
@@ -279,20 +306,20 @@ for m in range(3,6):
             total_variation += np.abs( histogram[k] - 1 / len(list_of_partitions))
         print(total_variation, "for # trials =", sample_size)
               
-    
-for sample_size in [100000]:     
-    partitions_subsampled = []
-    for i in range(sample_size):
-        partitions_subsampled.append( random.choice(partitions))
-    print("now making histogram")
-    histogram = make_histogram(list_of_partitions, partitions_subsampled)
-    print("now computing TV")
-    total_variation = 0
-    length = len(list_of_partitions)
-    for k in histogram.keys():
-        total_variation += np.abs( histogram[k] - (1 / length))
-    print(total_variation, "for # trials =", sample_size)
-      
+#    
+#for sample_size in [100000]:     
+#    partitions_subsampled = []
+#    for i in range(sample_size):
+#        partitions_subsampled.append( random.choice(partitions))
+#    print("now making histogram")
+#    histogram = make_histogram(list_of_partitions, partitions_subsampled)
+#    print("now computing TV")
+#    total_variation = 0
+#    length = len(list_of_partitions)
+#    for k in histogram.keys():
+#        total_variation += np.abs( histogram[k] - (1 / length))
+#    print(total_variation, "for # trials =", sample_size)
+#      
 #    print_summary_statistics(G,A)
 #    
 #raw_scores = []
@@ -358,7 +385,8 @@ for sample_size in [100000]:
 #0.8291355661881985 for # trials = 1000
 #now making histogram
 #0.3643438596491226 for # trials = 10000
-#
+##actually, this isn't suprising, just because the ratio between degree of different vertices
+    #is not nearly as much as the ratio between TATBcut(A,B)
 
 #Summary statistics: log( TATBcut(A,B)), cut size, number of interior points (mean, variance)
 #5x5 grid
