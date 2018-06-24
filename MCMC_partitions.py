@@ -8,8 +8,9 @@ import networkx as nx
 import numpy as np
 import random
 import matplotlib.pyplot as plt
-
-
+from naive_graph_partitions import k_connected_graph_partitions
+import MHonSpanningTrees
+import MCMC_partitions
 # Check if removing the proposed node from its current graph would disconnect the graph.
 # Input: A subgraph and a node from said graph.
 def removal_remains_connected(H, v):
@@ -22,14 +23,6 @@ def removal_remains_connected(H, v):
 
 
 # Make the initial districts using agglomeration.
-def district_maker():
-    graphs = M.generate_districts()
-    for i in graphs:
-        # Reject maps where any districts are small.
-        if i.number_of_nodes() <= 1:
-            return district_maker()
-    return graphs
-
 
 class maps:
     def __init__(self, K, n_districts, m):
@@ -44,6 +37,14 @@ class maps:
 
     # Pick a random node from the node boundary of the graph.
     # Input: a graph
+    def district_maker(self):
+        graphs = self.generate_districts()
+        for i in graphs:
+            # Reject maps where any districts are small.
+            if i.number_of_nodes() <= 1:
+                return self.district_maker()
+        return graphs
+
     def random_neighbor(self, graph):
         return random.sample(nx.node_boundary(self.G, graph.nodes()), 1)
 
@@ -92,15 +93,21 @@ class maps:
     def make_district_list(self):
         self.district_list = []
         for k in range(self.number_districts):
-            nbunch = [i for i in self.G.nodes() if self.G.node[i]['district'] == k]
+            nbunch = [i for i in self.G.nodes() if self.G.node[i]["district"] == k]
             H = self.G.subgraph(nbunch)
             self.district_list.append(H)
             self.districts[k] = H
+    
+    def set_node_district_flags(self):
+        for x in self.G.nodes():
+            for i in range(len(self.district_list)):
+                if self.district_list[i].has_node(x):
+                    self.G.node[x]["district"] = i
 
     # Establish the entire set of district edge nodes.
     def initialize_boundary(self):
         for i in range(self.number_districts):
-            X = list(nx.node_boundary(K, self.districts[i].nodes()))
+            X = list(nx.node_boundary(self.G, self.districts[i].nodes()))
             self.boundary_nodes = self.boundary_nodes.union(X)
             self.boundary_nodes_list.append(X)
 
@@ -132,7 +139,7 @@ class maps:
     def metropolis_hastings(self):
         if 0 in [len(g.nodes()) for g in self.district_list]:
             # Original code had this as a separate case.
-            M.MH_empty_district_case()
+            self.MH_empty_district_case()
             return
         self.set_boundary()
         node, new_district = self.pick_boundary_node()
@@ -158,7 +165,7 @@ class maps:
                     ok = 1
             if ok == 1:
                 boundary_nodes_list.append(x)
-        M.boundary_nodes = boundary_nodes_list
+        self.boundary_nodes = boundary_nodes_list
 
     def update(self, node, old_district, new_district):
         other_districts_nodes = nx.Graph()
@@ -215,25 +222,39 @@ def make_histogram(A, sample):
     return dictionary
     
 rejections_list = []
-m = 5
+m = 3
 print("when m is", m)
-K = nx.grid_2d_graph(m, m)
+G = nx.grid_2d_graph(m, m)
 # Initialize the entire graph.
 num_districts = 2
 
-A = k_connected_graph_partitions(K,2)
+A = k_connected_graph_partitions(G,2)
 list_of_partitions = list(A)
-for sample_size in [100,1000,10000]:
-    M = maps(K, num_districts, m)
+for sample_size in [100,1000]:
+#    M = maps(K, num_districts, m)
+#    samples = sample_size
+#    graphs = M.district_maker()
+#    # Store what district a node belongs to in the node attributes.
+#    for i in range(len(graphs)):
+#        for node in K.nodes():
+#            if graphs[i].has_node(node):
+#                K.node[node]['district'] = i
+#    M.make_district_list()
+#    M.initialize_boundary()
+#    found_districts = []
+    
+    M = MCMC_partitions.maps(G, num_districts, m)
     samples = sample_size
-    graphs = district_maker()
-    # Store what district a node belongs to in the node attributes.
-    for i in range(len(graphs)):
-        for node in K.nodes():
-            if graphs[i].has_node(node):
-                K.node[node]['district'] = i
-    M.make_district_list()
+    M.district_list = M.district_maker()
+    T = MHonSpanningTrees.random_spanning_tree(G)
+    e = MHonSpanningTrees.best_edge_for_equipartition(G,T)[0]
+    partition = MHonSpanningTrees.R(G,T,e)
+    M.district_list = partition
+    M.districts = M.district_list
+    M.set_node_district_flags()
+    print([M.G.node[x] for x in M.G.nodes()])
     M.initialize_boundary()
+    M.set_boundary()
     found_districts = []
     
     rejections = 0

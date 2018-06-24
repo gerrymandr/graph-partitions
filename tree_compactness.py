@@ -5,11 +5,11 @@ Created on Sun Jun 24 00:49:44 2018
 @author: MGGG
 """
 import numpy as np
-import random
+import networkx as nx
 import scipy.linalg
 from scipy.sparse import csc_matrix
 import scipy
-from scipy import array, linalg, dot
+
 
 def log_weighted_number_trees(G):
     m = nx.laplacian_matrix(G, weight = "weight")[1:,1:]
@@ -22,11 +22,12 @@ def log_weighted_number_trees(G):
     LU_prod = np.sum(S_log_U) + np.sum(S_log_L)
     return LU_prod
 
-import networkx as nx
-m = 10
-d = 10
-G = nx.grid_graph([m,m])
-H = nx.grid_graph([m,m])
+
+m = 4
+n = 4
+d = 2
+G = nx.grid_graph([m,n])
+H = nx.grid_graph([m,n])
 for x in G.edges():
     a = x[0]
     b = x[1]
@@ -34,9 +35,13 @@ for x in G.edges():
 for x in H.edges():
     a = x[0]
     b = x[1]
-    H.edges[x]["weight"] = ( d*np.abs(a[0] - b[0]) + (1/d)* np.abs(a[1] - b[1]))
+    H.edges[x]["weight"] = (d*np.abs(a[0] - b[0]) + (1/d)* np.abs(a[1] - b[1]))
 
 W_G = log_weighted_number_trees(G)
 W_H = log_weighted_number_trees(H)
-print("W_G", W_G)
-print("W_H", W_H)
+print("WG",W_G)
+print("WH", W_H)
+print("W_G - W_H", W_G - W_H)
+
+#W_G 98.44804291763761
+#W_H 209.95528522499345

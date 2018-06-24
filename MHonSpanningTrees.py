@@ -12,6 +12,7 @@ import scipy.linalg
 from scipy.sparse import csc_matrix
 import scipy
 from scipy import array, linalg, dot
+from naive_graph_partitions import k_connected_graph_partitions
 
 def log_number_trees(G):
     #Kirkoffs is the determinant of the minor..
@@ -265,47 +266,47 @@ def make_histogram(A, sample):
         dictionary[str(x)] = count(x,sample) / len(sample)
     return dictionary
     
-rejections_list = []
-for m in range(3,4):
-    m = 3
-    print("when m is", m)
-    G = nx.grid_graph([m,m])
-    print(log_number_trees(G))
-    A = k_connected_graph_partitions(G,2)
-    list_of_partitions = list(A)
-    desired_samples = [10**k for k in range(6,7)]
-    for sample_size in desired_samples:
-        samples = sample_size
-        T = random_spanning_tree(G)
-        e = random.choice(list(T.edges()))
-        trees = []
-        scores = []
-        partitions = []
-        rejections = 0
-        for i in range(samples):
-            previous_T = T
-            previous_e = e
-            MH_returns = MH_step(G,T,e,False, True)
-            if (T == MH_returns[0]) and (e == MH_returns[1]):
-                rejections += 1
-            T = MH_returns[0]
-            e = MH_returns[1]
-            partitions.append(R(G,T,e))
-            #trees.append(T)
-            #scores.append(score_tree_edge_pair(G,T,e))        
-       # print_summary_statistics(G,partitions)
-    #    print(rejections / samples , "at: ", m)
-    #    rejections_list.append(rejections)
-    #    
-            
-    #    inv_rejections = [1 / (1 - x/samples) for x in rejections_list]
-        print("now making histogram")
-        histogram = make_histogram(list_of_partitions, partitions)
-        total_variation = 0
-        for k in histogram.keys():
-            total_variation += np.abs( histogram[k] - 1 / len(list_of_partitions))
-        print(total_variation, "for # trials =", sample_size)
-              
+#rejections_list = []
+#for m in range(3,4):
+#    m = 3
+#    print("when m is", m)
+#    G = nx.grid_graph([m,m])
+#    print(log_number_trees(G))
+#    A = k_connected_graph_partitions(G,2)
+#    list_of_partitions = list(A)
+#    desired_samples = [10**k for k in range(6,7)]
+#    for sample_size in desired_samples:
+#        samples = sample_size
+#        T = random_spanning_tree(G)
+#        e = random.choice(list(T.edges()))
+#        trees = []
+#        scores = []
+#        partitions = []
+#        rejections = 0
+#        for i in range(samples):
+#            previous_T = T
+#            previous_e = e
+#            MH_returns = MH_step(G,T,e,False, True)
+#            if (T == MH_returns[0]) and (e == MH_returns[1]):
+#                rejections += 1
+#            T = MH_returns[0]
+#            e = MH_returns[1]
+#            partitions.append(R(G,T,e))
+#            #trees.append(T)
+#            #scores.append(score_tree_edge_pair(G,T,e))        
+#       # print_summary_statistics(G,partitions)
+#    #    print(rejections / samples , "at: ", m)
+#    #    rejections_list.append(rejections)
+#    #    
+#            
+#    #    inv_rejections = [1 / (1 - x/samples) for x in rejections_list]
+#        print("now making histogram")
+#        histogram = make_histogram(list_of_partitions, partitions)
+#        total_variation = 0
+#        for k in histogram.keys():
+#            total_variation += np.abs( histogram[k] - 1 / len(list_of_partitions))
+#        print(total_variation, "for # trials =", sample_size)
+#              
 #    
 #for sample_size in [100000]:     
 #    partitions_subsampled = []
