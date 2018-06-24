@@ -26,7 +26,7 @@ def district_maker():
     graphs = M.generate_districts()
     for i in graphs:
         # Reject maps where any districts are small.
-        if i.number_of_nodes() <= 5:
+        if i.number_of_nodes() <= 1:
             return district_maker()
     return graphs
 
@@ -108,17 +108,23 @@ class maps:
     def pick_boundary_node(self):
         while True:
             n = random.sample(self.boundary_nodes, 1)[0]
+            current = self.G.node[n]["district"]
             n_graph = self.districts[(self.G.node[n]["district"])]
             if removal_remains_connected(n_graph, n):
-                possible_swaps = []
-                for i in range(len(self.boundary_nodes_list)):
-                    for node in self.boundary_nodes_list[i]:
-                        if node == n:
-                            possible_swaps.append(i)
+                #print("current: ", current)
+                possible_swaps = set([])
+#                for i in range(len(self.boundary_nodes_list)):
+#                    for node in self.boundary_nodes_list[i]:
+#                        if node == n:
+#                            possible_swaps.append(i)
+                for k in self.G.neighbors(n):
+                    if self.G.node[k]["district"] != current:
+                        possible_swaps.add(self.G.node[k]["district"])
+                #print(possible_swaps)
                 f = random.sample(possible_swaps, 1)[0]
                 return n, f
-
-    # The case to deal with when a district is empty.
+            
+    
     def empty_district(self):
         return True
 
@@ -128,21 +134,32 @@ class maps:
             # Original code had this as a separate case.
             M.MH_empty_district_case()
             return
+        self.set_boundary()
         node, new_district = self.pick_boundary_node()
         old_district = self.G.node[node]["district"]
         old_deg = self.number_options()
         self.update(node, old_district, new_district)
         self.make_district_list()
         new_deg = self.number_options()
-        a = np.min([1, old_deg / new_deg])
-        coin = np.random.rand(1)
+        a = np.min([1, new_deg / old_deg])
+        coin = np.random.rand(1)[0]
         if coin > a:
+            #if coin bigger flip it back
             self.update(node, new_district, old_district)
             self.make_district_list()
 
-    # Update all the districts and their respective nodes.
-    # Input: a node, two districts
-    # Mostly adapted from the MCMC code in the Github.
+    def set_boundary(self):
+        boundary_nodes_list = []
+        for x in self.G.nodes():
+            ok = 0
+            current = self.G.node[x]["district"]
+            for k in self.G.neighbors(x):
+                if self.G.node[k]["district"] != current:
+                    ok = 1
+            if ok == 1:
+                boundary_nodes_list.append(x)
+        M.boundary_nodes = boundary_nodes_list
+
     def update(self, node, old_district, new_district):
         other_districts_nodes = nx.Graph()
         for i in range(self.number_districts):
@@ -182,27 +199,65 @@ class maps:
         plt.axis('off')
 
 
-# For making a grid graph.
-m = 10
+    
+def count(x, sample):
+    #number of times x appears in sample
+    count = 0
+    for i in sample:
+        if ((i[0].nodes() == x[0].nodes()) or (i[1].nodes() == x[0].nodes())):
+            count += 1
+    return count
+
+def make_histogram(A, sample):
+    dictionary = {str(x) : 0 for x in A}
+    for x in A:
+        dictionary[str(x)] = count(x,sample) / len(sample)
+    return dictionary
+    
+rejections_list = []
+m = 5
+print("when m is", m)
 K = nx.grid_2d_graph(m, m)
 # Initialize the entire graph.
-num_districts = 4
-M = maps(K, num_districts, m)
-graphs = district_maker()
-# Store what district a node belongs to in the node attributes.
-for i in range(len(graphs)):
-    for node in K.nodes():
-        if graphs[i].has_node(node):
-            K.node[node]['district'] = i
-M.make_district_list()
-M.initialize_boundary()
-# Run the visual and the MH Algorithm, pausing occasionally to show changes in the graph.
-M.visual(K)
-plt.pause(0.2)
-for i in range(100):
-    M.metropolis_hastings()
-    if i % 2 == 0:
-        M.visual(K)
-        plt.pause(0.1)
-        plt.show()
+num_districts = 2
 
+A = k_connected_graph_partitions(K,2)
+list_of_partitions = list(A)
+for sample_size in [100,1000,10000]:
+    M = maps(K, num_districts, m)
+    samples = sample_size
+    graphs = district_maker()
+    # Store what district a node belongs to in the node attributes.
+    for i in range(len(graphs)):
+        for node in K.nodes():
+            if graphs[i].has_node(node):
+                K.node[node]['district'] = i
+    M.make_district_list()
+    M.initialize_boundary()
+    found_districts = []
+    
+    rejections = 0
+    for i in range(sample_size):
+        current = M.district_list
+        M.metropolis_hastings()
+        found_districts.append(M.district_list)
+        if (current[0].nodes() == M.district_list[0].nodes()) or (current[0].nodes() == M.district_list[1].nodes()):
+            rejections += 1
+            
+    print("now making histogram")
+    histogram = make_histogram(list_of_partitions, found_districts)
+    total_variation = 0
+    for k in histogram.keys():
+        total_variation += np.abs( histogram[k] - 1 / len(list_of_partitions))
+    print(total_variation, "for # trials =", sample_size)
+
+#M.visual(K)
+#plt.pause(0.2)
+#for i in range(100):
+#    M.metropolis_hastings()
+#    if i % 2 == 0:
+#        M.visual(K)
+#        plt.pause(0.1)
+#        plt.show()
+##
+#
