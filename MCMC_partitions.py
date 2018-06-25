@@ -221,56 +221,56 @@ def make_histogram(A, sample):
         dictionary[str(x)] = count(x,sample) / len(sample)
     return dictionary
     
-rejections_list = []
-m = 3
-print("when m is", m)
-G = nx.grid_2d_graph(m, m)
+#rejections_list = []
+#m = 3
+#print("when m is", m)
+#G = nx.grid_2d_graph(m, m)
 # Initialize the entire graph.
-num_districts = 2
-
-A = k_connected_graph_partitions(G,2)
-list_of_partitions = list(A)
-for sample_size in [100,1000]:
-#    M = maps(K, num_districts, m)
+#num_districts = 2
+#
+#A = k_connected_graph_partitions(G,2)
+#list_of_partitions = list(A)
+#for sample_size in [100,1000]:
+##    M = maps(K, num_districts, m)
+##    samples = sample_size
+##    graphs = M.district_maker()
+##    # Store what district a node belongs to in the node attributes.
+##    for i in range(len(graphs)):
+##        for node in K.nodes():
+##            if graphs[i].has_node(node):
+##                K.node[node]['district'] = i
+##    M.make_district_list()
+##    M.initialize_boundary()
+##    found_districts = []
+#    
+#    M = MCMC_partitions.maps(G, num_districts, m)
 #    samples = sample_size
-#    graphs = M.district_maker()
-#    # Store what district a node belongs to in the node attributes.
-#    for i in range(len(graphs)):
-#        for node in K.nodes():
-#            if graphs[i].has_node(node):
-#                K.node[node]['district'] = i
-#    M.make_district_list()
+#    M.district_list = M.district_maker()
+#    T = MHonSpanningTrees.random_spanning_tree(G)
+#    e = MHonSpanningTrees.best_edge_for_equipartition(G,T)[0]
+#    partition = MHonSpanningTrees.R(G,T,e)
+#    M.district_list = partition
+#    M.districts = M.district_list
+#    M.set_node_district_flags()
+#    print([M.G.node[x] for x in M.G.nodes()])
 #    M.initialize_boundary()
+#    M.set_boundary()
 #    found_districts = []
-    
-    M = MCMC_partitions.maps(G, num_districts, m)
-    samples = sample_size
-    M.district_list = M.district_maker()
-    T = MHonSpanningTrees.random_spanning_tree(G)
-    e = MHonSpanningTrees.best_edge_for_equipartition(G,T)[0]
-    partition = MHonSpanningTrees.R(G,T,e)
-    M.district_list = partition
-    M.districts = M.district_list
-    M.set_node_district_flags()
-    print([M.G.node[x] for x in M.G.nodes()])
-    M.initialize_boundary()
-    M.set_boundary()
-    found_districts = []
-    
-    rejections = 0
-    for i in range(sample_size):
-        current = M.district_list
-        M.metropolis_hastings()
-        found_districts.append(M.district_list)
-        if (current[0].nodes() == M.district_list[0].nodes()) or (current[0].nodes() == M.district_list[1].nodes()):
-            rejections += 1
-            
-    print("now making histogram")
-    histogram = make_histogram(list_of_partitions, found_districts)
-    total_variation = 0
-    for k in histogram.keys():
-        total_variation += np.abs( histogram[k] - 1 / len(list_of_partitions))
-    print(total_variation, "for # trials =", sample_size)
+#    
+#    rejections = 0
+#    for i in range(sample_size):
+#        current = M.district_list
+#        M.metropolis_hastings()
+#        found_districts.append(M.district_list)
+#        if (current[0].nodes() == M.district_list[0].nodes()) or (current[0].nodes() == M.district_list[1].nodes()):
+#            rejections += 1
+#            
+#    print("now making histogram")
+#    histogram = make_histogram(list_of_partitions, found_districts)
+#    total_variation = 0
+#    for k in histogram.keys():
+#        total_variation += np.abs( histogram[k] - 1 / len(list_of_partitions))
+#    print(total_variation, "for # trials =", sample_size)
 
 #M.visual(K)
 #plt.pause(0.2)

@@ -268,17 +268,18 @@ def make_histogram(A, sample):
     
 #rejections_list = []
 #for m in range(3,4):
-#    m = 3
+#    m = 20
 #    print("when m is", m)
 #    G = nx.grid_graph([m,m])
+#    G = nx.complete_graph(4)
 #    print(log_number_trees(G))
-#    A = k_connected_graph_partitions(G,2)
-#    list_of_partitions = list(A)
-#    desired_samples = [10**k for k in range(6,7)]
+#    #A = k_connected_graph_partitions(G,2)
+#    #list_of_partitions = list(A)
+#    desired_samples = [10**k for k in range(4,5)]
 #    for sample_size in desired_samples:
 #        samples = sample_size
 #        T = random_spanning_tree(G)
-#        e = random.choice(list(T.edges()))
+#        e = best_edge_for_equipartition(G,T)[0]
 #        trees = []
 #        scores = []
 #        partitions = []
@@ -286,18 +287,18 @@ def make_histogram(A, sample):
 #        for i in range(samples):
 #            previous_T = T
 #            previous_e = e
-#            MH_returns = MH_step(G,T,e,False, True)
+#            MH_returns = MH_step(G,T,e,True, True)
 #            if (T == MH_returns[0]) and (e == MH_returns[1]):
 #                rejections += 1
 #            T = MH_returns[0]
 #            e = MH_returns[1]
 #            partitions.append(R(G,T,e))
-#            #trees.append(T)
-#            #scores.append(score_tree_edge_pair(G,T,e))        
-#       # print_summary_statistics(G,partitions)
-#    #    print(rejections / samples , "at: ", m)
-#    #    rejections_list.append(rejections)
-#    #    
+#            trees.append(T)
+#            scores.append(score_tree_edge_pair(G,T,e))        
+       # print_summary_statistics(G,partitions)
+    #    print(rejections / samples , "at: ", m)
+    #    rejections_list.append(rejections)
+    #    
 #            
 #    #    inv_rejections = [1 / (1 - x/samples) for x in rejections_list]
 #        print("now making histogram")
