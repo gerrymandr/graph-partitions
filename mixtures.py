@@ -9,7 +9,7 @@ Created on Sun Jun 24 19:07:44 2018
 import naive_graph_partitions as ngp
 import networkx as nx
 import MHonSpanningTrees as ST_tools
-G = nx.complete_graph(4)
+
 
 import numpy as np
 import matplotlib.pyplot as plt
@@ -75,13 +75,21 @@ def find_all_spanning_trees(G, root=0):
 
     return [nx.from_edgelist(edges) for (nodes, edges) in solutions]
 ##### end https://stackoverflow.com/questions/40155070/networkx-all-spanning-trees-and-their-associated-total-weight stuff
-    
+G = nx.grid_graph([3,3])
+G = nx.convert_node_labels_to_integers(G)
 ST = find_all_spanning_trees(G)
 partitions = ngp.k_connected_graph_partitions(G,2)
-found_partitions = []
+A = list(partitions)
+T_distributions = []
+total_partitions = []
 for T in ST:
+    found_partitions = []
     for e in T.edges():
         partitions = ST_tools.R(G,T,e)
         found_partitions.append(partitions)
+        total_partitions.append(partitions)
+    distribution = ST_tools.make_histogram(A, found_partitions)
+    T_distributions.append(distribution)
 
-histogram = ST_tools.make_histogram(partitions, found_partitions)
+
+    distribution = ST_tools.make_histogram(A, total_partitions)

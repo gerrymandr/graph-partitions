@@ -207,20 +207,6 @@ class maps:
 
 
     
-def count(x, sample):
-    #number of times x appears in sample
-    count = 0
-    for i in sample:
-        if ((i[0].nodes() == x[0].nodes()) or (i[1].nodes() == x[0].nodes())):
-            count += 1
-    return count
-
-def make_histogram(A, sample):
-    dictionary = {str(x) : 0 for x in A}
-    for x in A:
-        dictionary[str(x)] = count(x,sample) / len(sample)
-    return dictionary
-    
 #rejections_list = []
 #m = 3
 #print("when m is", m)

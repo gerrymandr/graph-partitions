@@ -38,13 +38,14 @@ def number_trees_via_spectrum(G):
     S = nx.laplacian_spectrum(G)[1:]
     logdet = np.sum ( [np.log(s) for s in S]) - np.log(n)
     return logdet
-    
+ 
+##This makes a random spanning tree:    
+
 def srw(G,a):
     wet = set([a])
     trip = [a]
     while len(wet) < len(G.nodes()):
         b = random.choice(list(G.neighbors(a)))
-        #print(b)
         wet.add(b)
         trip.append(b)
         a = b
@@ -66,17 +67,23 @@ def random_spanning_tree(G):
     T.add_edges_from(T_edges)
     return T
 
+###/spanning tree
+
 ##May be faster to do this all with matrices / F_2... since cycles are linearly depenent sets, etc
 
 def propose_step(G,T, cut_only = False):
+    T_edges = list(T.edges())
+    T_edges_t = [ tuple((e[1], e[0])) for e in T_edges]
     e = list(T.edges())[0]
     if cut_only == False:
         while (e in list(T.edges())) or (tuple([e[1], e[0]]) in list(T.edges())):
             e = random.choice(list(G.edges()))
+            ##This is stupid!
     if cut_only == True:
-        cuts = list(cut_edges(G,T, best_edge_for_equipartition(G,T)[0]))
-        while (e in list(T.edges())) or (tuple([e[1], e[0]]) in list(T.edges())):
-            e = random.choice(cuts)        
+        #If we want to only add edges that would change a best partition...
+        cuts = cut_edges(G,T, best_edge_for_equipartition(G,T)[0])
+        A = [e for e in cuts if e not in T_edges and e not in T_edges_t]
+        e = random.choice(cuts)       
     T.add_edges_from([e])
     C = nx.find_cycle(T, orientation = 'ignore')
     w = random.choice(C)
@@ -125,6 +132,7 @@ def random_lift(G,G_A, G_B):
         for b in G_B.nodes():
             if G.has_edge(a,b):
                 cross_edges.append([a,b])
+    #This is stupid!
     e = random.choice(cross_edges)
     T = nx.Graph()
     T.add_nodes_from(list(G.nodes()))
@@ -158,7 +166,6 @@ def score_tree(G, T):
 
 def best_edge_for_equipartition(G,T):
     list_of_edges = list(T.edges())
-    #something weird happens with the iterator if we put this in the for statement... I don't know why...
     best = 0
     candidate = 0
     for e in list_of_edges:
@@ -167,15 +174,6 @@ def best_edge_for_equipartition(G,T):
             #print(best)
             best = score
             candidate = e
-#    #If you try this the answer it gives alternates... though wrapping T.edges with list also works.
-#    best = 0
-#    candidate = 0
-#    for e in T.edges():
-#        score = equi_score_tree_edge_pair(G,T,e)
-#        if score > best:
-#            print(best)
-#            best = score
-#            candidate = e
     return [candidate, best]
 
 def equi_score_tree_edge_pair(G,T,e):
@@ -242,71 +240,65 @@ def print_summary_statistics(G,partitions):
            [np.mean(interior), np.var(interior)])
     
 def count(x, sample):
-    #number of times x appears in sample
+
+    x_lens = np.sort([len(k) for k in x])
     count = 0
     for i in sample:
-        R0 = list(i[0].nodes())
-        R1 = list(i[1].nodes())
-        X0 = list(x[0].nodes())
-        m = len(X0)
-        ok = 0
-        if len(R0) == m:
-            if R0 == X0:
-                ok = 1
-        if len(R1) == m:
-            if R1 == X0:
-                ok = 1
-        if ok == 1:
-            count += 1
+        sample_nodes = set([frozenset(g.nodes()) for g in i])
+        sample_lens = np.sort([len(k) for k in sample_nodes])
+        if (x_lens == sample_lens).all():
+            if x == sample_nodes:
+                count += 1
     return count
 
 def make_histogram(A, sample):
-    dictionary = {str(x) : 0 for x in A}
-    for x in A:
+    A_node_lists = [ set([frozenset(g.nodes()) for g in x]) for x in A]
+    dictionary = {}
+    for x in A_node_lists:
         dictionary[str(x)] = count(x,sample) / len(sample)
     return dictionary
-    
-#rejections_list = []
-#for m in range(3,4):
-#    m = 20
-#    print("when m is", m)
-#    G = nx.grid_graph([m,m])
-#    G = nx.complete_graph(4)
-#    print(log_number_trees(G))
-#    #A = k_connected_graph_partitions(G,2)
-#    #list_of_partitions = list(A)
-#    desired_samples = [10**k for k in range(4,5)]
-#    for sample_size in desired_samples:
-#        samples = sample_size
-#        T = random_spanning_tree(G)
-#        e = best_edge_for_equipartition(G,T)[0]
-#        trees = []
-#        scores = []
-#        partitions = []
-#        rejections = 0
-#        for i in range(samples):
-#            previous_T = T
-#            previous_e = e
-#            MH_returns = MH_step(G,T,e,True, True)
-#            if (T == MH_returns[0]) and (e == MH_returns[1]):
-#                rejections += 1
-#            T = MH_returns[0]
-#            e = MH_returns[1]
-#            partitions.append(R(G,T,e))
-#            trees.append(T)
-#            scores.append(score_tree_edge_pair(G,T,e))        
-       # print_summary_statistics(G,partitions)
-    #    print(rejections / samples , "at: ", m)
-    #    rejections_list.append(rejections)
-    #    
-#            
-#    #    inv_rejections = [1 / (1 - x/samples) for x in rejections_list]
-#        print("now making histogram")
-#        histogram = make_histogram(list_of_partitions, partitions)
-#        total_variation = 0
-#        for k in histogram.keys():
-#            total_variation += np.abs( histogram[k] - 1 / len(list_of_partitions))
-#        print(total_variation, "for # trials =", sample_size)
+
+
+
+rejections_list = []
+for m in range(3,4):
+    m = 3
+    #print("when m is", m)
+    G = nx.grid_graph([3,2])
+    list_of_partitions = list(k_connected_graph_partitions(G,2))
+    desired_samples = [10**k for k in range(4,5)]
+    desired_samples = [1000]
+    for sample_size in desired_samples:
+        samples = sample_size
+        T = random_spanning_tree(G)
+        e = best_edge_for_equipartition(G,T)[0]
+        trees = []
+        scores = []
+        partitions = []
+        rejections = 0
+        for i in range(samples):
+            previous_T = T
+            previous_e = e
+            MH_returns = MH_step(G,T,e,False, True)
+            if (T == MH_returns[0]) and (e == MH_returns[1]):
+                rejections += 1
+            T = MH_returns[0]
+            e = MH_returns[1]
+            partitions.append(R(G,T,e))
+            trees.append(T)
+            scores.append(score_tree_edge_pair(G,T,e))        
+        print_summary_statistics(G,partitions)
+        #print(rejections / samples , "at: ", m)
+        rejections_list.append(rejections)
+        
+            
+    #    inv_rejections = [1 / (1 - x/samples) for x in rejections_list]
+        #print("now making histogram")
+        histogram = make_histogram(list_of_partitions, partitions)
+        total_variation = 0
+        for k in histogram.keys():
+            total_variation += np.abs( histogram[k] - 1 / len(list_of_partitions))
+        print("total variation", total_variation, "for # trials =", sample_size)
 #              
 #    
 #for sample_size in [100000]:     
