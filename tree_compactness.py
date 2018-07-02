@@ -13,6 +13,7 @@ import random
 import numpy as np
 import copy
 from tqdm import tqdm
+import warnings
 
 
 
@@ -23,35 +24,49 @@ def log_weighted_number_trees(G):
     splumatrix = scipy.sparse.linalg.splu(m)
     diag_L = np.diag(splumatrix.L.A)
     diag_U = np.diag(splumatrix.U.A)
-    S_log_L = [np.log(s) for s in diag_L]
-    S_log_U = [np.log(s) for s in diag_U]
+    S_log_L = [np.log(np.abs(s)) for s in diag_L]
+    S_log_U = [np.log(np.abs(s)) for s in diag_U]
     LU_prod = np.sum(S_log_U) + np.sum(S_log_L)
     return LU_prod
 
-#
-#m = 3
-#n = 3
-#d = 2
-#G = nx.grid_graph([m,n])
-#H = nx.grid_graph([m,n])
-#for x in G.edges():
-#    a = x[0]
-#    b = x[1]
-#    G.edges[x]["weight"] = (np.abs(a[0] - b[0]) + np.abs(a[1] - b[1]))
-#for x in H.edges():
-#    a = x[0]
-#    b = x[1]
-#    H.edges[x]["weight"] = (d*np.abs(a[0] - b[0]) + (1/d)* np.abs(a[1] - b[1]))
-#
-#
-#W_G = log_weighted_number_trees(G)
-#W_H = log_weighted_number_trees(H)
-#print("WG",W_G)
-#print("WH", W_H)
-#print("W_G - W_H", W_G - W_H)
-#
-##W_G 98.44804291763761
-##W_H 209.95528522499345
+def log_number_trees(G):
+    m = nx.laplacian_matrix(G)[1:,1:]
+    m = csc_matrix(m)
+    splumatrix = scipy.sparse.linalg.splu(m)
+    diag_L = np.diag(splumatrix.L.A)
+    diag_U = np.diag(splumatrix.U.A)
+    try:
+        S_log_L = [np.log(np.abs(s)) for s in diag_L]
+        S_log_U = [np.log(np.abs(s)) for s in diag_U]
+    except Warning:
+        print(diag_U)
+    LU_prod = np.sum(S_log_U) + np.sum(S_log_L)
+    return LU_prod
+
+
+m = 3
+n = 3
+d = 2
+G = nx.grid_graph([m,n])
+H = nx.grid_graph([m,n])
+for x in G.edges():
+    a = x[0]
+    b = x[1]
+    G.edges[x]["weight"] = (np.abs(a[0] - b[0]) + np.abs(a[1] - b[1]))
+for x in H.edges():
+    a = x[0]
+    b = x[1]
+    H.edges[x]["weight"] = (d*np.abs(a[0] - b[0]) + (1/d)* np.abs(a[1] - b[1]))
+
+
+W_G = log_weighted_number_trees(G)
+W_H = log_weighted_number_trees(H)
+print("WG",W_G)
+print("WH", W_H)
+print("W_G - W_H", W_G - W_H)
+
+#W_G 98.44804291763761
+#W_H 209.95528522499345
 #
 #    
 #ambient = nx.grid_graph( [100,100])
@@ -139,7 +154,7 @@ def children(H_nodes,G):
         H_nodes.remove(n)
     return admissable_children
 
-def build_tree(G,k):
+def build_tree(G,k, num_level):
     # G is the overall graph
     # k will be the max subgraph size, ideally a square
     
@@ -155,9 +170,11 @@ def build_tree(G,k):
     # go through each level of the tree
     for i in tqdm(range(len(tree)-1)):
         # add the children of each subgraph at this level
-        for subgraph in tqdm(tree[i]):
+        fixed_num_level = min(num_level, len(tree[i]))
+        random_sample = random.sample(tree[i], fixed_num_level)
+        for subgraph in random_sample:
             tree[i+1] += children(subgraph, G)
-            
+        tree[i] = []
     return tree
     
     
@@ -178,6 +195,18 @@ if __name__ == "__main__":
     for v in G_nodes:
         G.node[v]["weight"] = random.uniform(0,1)
         
-    k = 9
-    subgraph_tree = build_tree(G, k)
+    k = 3
+    subgraph_tree = build_tree(G, k**2, 3000)
     
+    num_trees = []
+    subgraphs = []
+    n = len(subgraph_tree)
+    for S in subgraph_tree[n-1]:
+        num_trees.append(log_number_trees(nx.induced_subgraph(G, S)))
+        subgraphs.append(nx.induced_subgraph(G,S))
+        
+    print(np.max(num_trees))
+    H = nx.grid_graph([k,k])
+    print(log_number_trees(H))
+
+
