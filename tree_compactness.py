@@ -79,10 +79,12 @@ for e in G_edges:
     G.edges[e]["weight"] = random.uniform(0,1)
     
 def parent(H):
+    #Give it a subgraph, it returns the set of nodes of it's parent
     if len(H.nodes()) == 1:
         return set([])
     if len(H.nodes()) == 2:
-        return set(H.nodes())
+        return set((random.choice(H.nodes())))
+    
     M = nx.minimum_spanning_tree(H)
     M_edges = M.edges()
     leaf_edges = [f for f in M_edges if ( (M.degree(f[0]) == 1) or (M.degree(f[1]) == 1))]
@@ -103,7 +105,7 @@ def parent(H):
         
 def neighbors(H_nodes, G):
     #Finds all neighbor nodes of H in G
-    #H is a list ofnodes
+    #H is a set ofnodes
     if len(H_nodes) == 0:
         return list(G.nodes())
     neighbors_list = []
@@ -126,11 +128,7 @@ def children(H_nodes,G):
         candidate_child = nx.induced_subgraph(G, H_nodes)
         H_nodes.remove(n)
         P = parent(candidate_child)
-        if type(P) == set:
-            if P.intersection(H_nodes) != set():
-                admissable_additions.append(n)
-        else:
-            if P == H_nodes:
+        if P == H_nodes:
                 admissable_additions.append(n)
     admissable_children = []
     for n in admissable_additions:
