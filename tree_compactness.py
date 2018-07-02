@@ -12,11 +12,10 @@ import scipy
 import random
 import numpy as np
 import copy
-from anytree import Node, NodeMixin
+from tqdm import tqdm
 
-class meta_tree(NodeMixin):
-    def __init__(self, G):
-        self.graph = G
+
+
     
 def log_weighted_number_trees(G):
     m = nx.laplacian_matrix(G, weight = "weight")[1:,1:]
@@ -73,17 +72,20 @@ Reverse search (essentially, DFS of this tree) will then find each connected ind
 https://cstheory.stackexchange.com/questions/16305/enumerating-all-connected-induced-subgraphs
 '''
 
-G = nx.grid_graph([100,100])
-G_edges = G.edges()
-for e in G_edges:
-    G.edges[e]["weight"] = random.uniform(0,1)
+
     
 def parent(H):
     #Give it a subgraph, it returns the set of nodes of it's parent
     if len(H.nodes()) == 1:
         return set([])
     if len(H.nodes()) == 2:
-        return set((random.choice(H.nodes())))
+        list_of_nodes = list(H.nodes)
+        weights = [H.node[x]["weight"] for x in list_of_nodes]
+        max_weight = np.max(weights)
+        for v in list_of_nodes:
+            if H.node[v]["weight"] == max_weight:
+                return set ( [v])
+        
     
     M = nx.minimum_spanning_tree(H)
     M_edges = M.edges()
@@ -137,17 +139,45 @@ def children(H_nodes,G):
         H_nodes.remove(n)
     return admissable_children
 
-def build_tree(G):
-    root = nx.Graph()
-    T = nx.Graph()
-    leaf_nodes = [root]
+def build_tree(G,k):
+    # G is the overall graph
+    # k will be the max subgraph size, ideally a square
+    
+    # build list of empty lists
+    # nth index corresponds to subgraphs of size n, so 0 is the empty subgraph
+    tree = []
+    for i in range(k + 1):
+        tree.append([])
+    
+    empty_graph = nx.Graph()
+    tree[0].append(set())
+    
+    # go through each level of the tree
+    for i in tqdm(range(len(tree)-1)):
+        # add the children of each subgraph at this level
+        for subgraph in tqdm(tree[i]):
+            tree[i+1] += children(subgraph, G)
+            
+    return tree
     
     
     
 def prune(T):
     #Remove automorphsim duplicates from among the subgraphs
     #Let's understand if we can prune this without restricting the isomorphism classes
+    return 1
     
-def extend(T):
     
+if __name__ == "__main__":
+    G = nx.grid_graph([10,10])
+    G_edges = G.edges()
+    for e in G_edges:
+        G.edges[e]["weight"] = random.uniform(0,1)
+        
+    G_nodes = G.nodes()
+    for v in G_nodes:
+        G.node[v]["weight"] = random.uniform(0,1)
+        
+    k = 9
+    subgraph_tree = build_tree(G, k)
     
