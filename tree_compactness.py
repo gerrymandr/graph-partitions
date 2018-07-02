@@ -138,12 +138,15 @@ def children(H_nodes,G):
     return admissable_children
 
 def build_tree(G):
-    G = nx.Graph()
-    root = meta_tree(G)
+    root = nx.Graph()
+    T = nx.Graph()
+    leaf_nodes = [root]
+    
     
     
 def prune(T):
-    #Remove isomorphism duplicates from among the subgraphs
+    #Remove automorphsim duplicates from among the subgraphs
+    #Let's understand if we can prune this without restricting the isomorphism classes
     
 def extend(T):
     
